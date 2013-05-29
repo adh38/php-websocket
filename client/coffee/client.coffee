@@ -1,11 +1,19 @@
 $(document).ready ->
-	log = (msg) -> $('#log').append("#{msg}<br />")	
-	serverUrl = 'ws://127.0.0.1:8000/demo'
+	log = (msg) -> $('#log').prepend("#{msg}<br />")	
+	serverUrl = 'ws://localhost:7622/demo'
 	if window.MozWebSocket		
 		socket = new MozWebSocket serverUrl
+		log "Has MozWebSocket"
 	else if window.WebSocket		
 		socket = new WebSocket serverUrl
+		log "Has WebSocket"
+	else log "No websockets!"
+
 	socket.binaryType = 'blob'
+
+	log "Connecting to " + serverUrl
+	log "ready = " + socket.readyState
+	log "buff = " + socket.bufferedAmount;
 
 	socket.onopen = (msg) ->
 		$('#status').removeClass().addClass('online').html('connected')
@@ -16,6 +24,7 @@ $(document).ready ->
 		log("Data: #{response.data}")
 	
 	socket.onclose = (msg) ->
+		log 'closed'
 		$('#status').removeClass().addClass('offline').html('disconnected')
 	
 	$('#status').click ->
@@ -30,10 +39,6 @@ $(document).ready ->
 	$('#sendfile').click ->
 		data = document.binaryFrame.file.files[0]
 		if data			
-			payload = new Object()
-			payload.action = 'setFilename'
-			payload.data = $('#file').val()			
-			socket.send JSON.stringify payload			
 			socket.send(data)
 		return false
 		

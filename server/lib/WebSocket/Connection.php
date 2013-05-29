@@ -39,7 +39,7 @@ class Connection
     
     private function handshake($data)
     {	
-        $this->log('Performing handshake');	    
+        $this->log('Performing handshake with data: ' . $data);	    
         $lines = preg_split("/\r\n/", $data);
 		
 		// check for valid http-header:
@@ -107,14 +107,14 @@ class Connection
 				return false;
 			}
 			
-			if($this->server->checkOrigin($origin) === false)
+			/*if($this->server->checkOrigin($origin) === false)
 			{
-				$this->log('Invalid origin provided.');
+				$this->log('Invalid origin provided: ' . $origin);
 				$this->sendHttpResponse(401);
 				stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
 				$this->server->removeClientOnError($this);
 				return false;
-			}
+			}//*/
 		}		
 		
 		// do handyshake: (hybi-10)
@@ -260,7 +260,12 @@ class Connection
     }   
     
     public function send($payload, $type = 'text', $masked = false)
-    {		
+    {	
+    	$this->log('sending: ' . $payload, 'info');
+    	if(!$this->handshaked) {
+    		$this->log('Attempted to send packet before handshake: ' . $payload, 'info');
+    		return false;
+    	}	
 		$encodedData = $this->hybi10Encode($payload, $type, $masked);			
 		if(!$this->server->writeBuffer($this->socket, $encodedData))
 		{
@@ -522,6 +527,10 @@ class Connection
 			$payloadOffset = $payloadOffset - 4;
 			$decodedData['payload'] = substr($data, $payloadOffset);
 		}
+		
+		$datastr = '';
+		for($i = 0; $i < strlen($data); $i++) $datastr .= ord($data[$i]) . '-';
+		$this->log('received: ' . $decodedData['payload']);
 		
 		return $decodedData;
 	}

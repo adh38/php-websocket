@@ -26,12 +26,17 @@ class Socket
     protected $allsockets = array();
 	protected $context = null;
 	protected $ssl = false;
+	protected $server_created = false;
 
 	public function __construct($host = 'localhost', $port = 8000, $ssl = false)
     {
         ob_implicit_flush(true);
 		$this->ssl = $ssl;
-        $this->createSocket($host, $port);
+        $this->server_created = $this->createSocket($host, $port);
+    }
+    
+    public function server_created() {
+    	return $this->server_created;
     }
 
     /**
@@ -51,10 +56,12 @@ class Socket
 		}
 		if(!$this->master = stream_socket_server($url, $errno, $err, STREAM_SERVER_BIND|STREAM_SERVER_LISTEN, $this->context))
 		{
-			die('Error creating socket: ' . $err);
+			stampLog('Error creating socket: ' . $err);
+			return false;
 		}		
 		
 		$this->allsockets[] = $this->master;
+		return true;
 	}  
 	
 	private function applySSLContext()

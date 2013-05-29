@@ -36,6 +36,9 @@ class DemoApplication extends Application
 		if(method_exists($this, $actionName))
 		{			
 			call_user_func(array($this, $actionName), $decodedData['data']);
+			foreach($this->_clients as $sendto) {
+				$sendto->send($this->_encodeData('echo','called '.$actionName.' with param '.$decodedData['data']));
+			}
 		}
     }
 	
@@ -54,7 +57,7 @@ class DemoApplication extends Application
 		}
 		else
 		{
-			$msg = 'Error receiving file.';
+			$msg = 'Error receiving file: ' . $filePath . ', ' . $this->_filename;
 		}
 		$client->send($this->_encodeData('echo', $msg));
 		$this->_filename = '';
@@ -82,6 +85,10 @@ class DemoApplication extends Application
 		if(!empty($filename)) 
 		{
 			$this->_filename = $filename;
+			foreach($this->_clients as $sendto)
+			{
+				$sendto->send($this->_encodeData('echo',$this->_filename));
+			}
 			return true;
 		}
 		return false;

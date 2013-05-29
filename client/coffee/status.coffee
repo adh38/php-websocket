@@ -1,13 +1,26 @@
 $(document).ready ->
 	log = (msg) -> $('#log').prepend("#{msg}<br />")	
-	serverUrl = 'ws://localhost:8000/status'
+
+	serverIP = $('meta[name="websocket-IP"]').attr('content')
+	serverPort = $('meta[name="websocket-port"]').attr('content')
+	log 'read IP = ' + serverIP + ', port = ' + serverPort
+	serverUrl = 'ws://' + serverIP + ':' + serverPort + '/status'
+
 	if window.MozWebSocket		
 		socket = new MozWebSocket serverUrl
+		log "Has MozWebSocket"
 	else if window.WebSocket		
 		socket = new WebSocket serverUrl
+		log "Has WebSocket"
+	else log "No websockets!"
+
+	log "Connecting to " + serverUrl
+	log "ready = " + socket.readyState
+	log "buff = " + socket.bufferedAmount;
 
 	socket.onopen = (msg) ->
 		$('#status').removeClass().addClass('online').html('connected')
+		$('#serverPanel button').html('Stop Server')
 
 	socket.onmessage = (msg) ->
 		response = JSON.parse(msg.data)
@@ -18,8 +31,13 @@ $(document).ready ->
 			when "clientActivity"		then clientActivity response.data
 			when "serverInfo"			then refreshServerinfo response.data
 
+	socket.onerror = (msg) ->
+		console.log('error: %o', msg);
+
 	socket.onclose = (msg) ->
+		log 'closed'
 		$('#status').removeClass().addClass('offline').html('disconnected')
+		$('#serverPanel button').html('Start Server')
 
 	$('#status').click ->
 		socket.close()

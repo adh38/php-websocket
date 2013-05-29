@@ -10,6 +10,7 @@ namespace WebSocket;
 class Server extends Socket
 {   
     protected $clients = array();
+    protected $_hasClients = false;
     protected $applications = array();
 	private $_ipStorage = array();
 	private $_requestStorage = array();
@@ -43,10 +44,22 @@ class Server extends Socket
 	 */
 	public function run()
 	{
+		$start_time = microtime(true);
+		$time_limit = 10; //seconds
 		while(true)
 		{
+			if(microtime(true) > $start_time + $time_limit) {
+				echo '<br/>reached time limit of ' . $time_limit . ' seconds';
+				break;
+			}
 			$changed_sockets = $this->allsockets;
-			@stream_select($changed_sockets, $write = null, $except = null, 0, 5000);			
+			if(count($changed_sockets) > 1) $this->_hasClients = true;
+			elseif($this->_hasClients) { //had clients at one time but now only has the master socket server
+				$this->log("Last client disconnected - shutting down");
+				$this->stopServer();
+				return;
+			}
+			@stream_select($changed_sockets, $write = null, $except = null, 0, 100000);			
 			foreach($changed_sockets as $socket)
 			{
 				if($socket == $this->master)
@@ -115,6 +128,11 @@ class Server extends Socket
 					}
 				}
 			}
+			//have the game application send a new frame
+			$game = $this->getApplication('game');
+			if($game !== false) {
+				$game->frame();
+			}
 		}
 	}	
 
@@ -167,7 +185,20 @@ class Server extends Socket
 	 */
     public function log($message, $type = 'info')
     {
-        echo date('Y-m-d H:i:s') . ' [' . ($type ? $type : 'error') . '] ' . $message . PHP_EOL;
+        $str = date('Y-m-d H:i:s') . ' [' . ($type ? $type : 'error') . '] ' . $message . PHP_EOL;
+        if (function_exists("serverLog")) serverLog($str);
+        else echo $str;
+    }
+    
+    /**
+     * Shuts down all connections upon request
+     */
+    public function stopServer()
+    {
+    	foreach($this->clients as $client) {
+    		$client->onDisconnect();
+    	}
+    	fclose($this->master);
     }
 	
 	/**
